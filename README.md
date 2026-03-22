@@ -64,18 +64,6 @@ AUDIO_INPUT_DEVICE=discord_sink.monitor
 
 Route REAPER output to `DiscordSink` and run `$stream start`.
 
-## Security
-
-- Never commit `.env`
-- Rotate bot token immediately if exposed
-- Scope bot permissions to only what is required (`Connect`, `Speak`, `Send Messages`)
-
-## Roadmap
-
-- Slash commands
-- Auto device discovery command
-- Web dashboard for status and source switching
-
 ## License
 
 MIT
