@@ -66,14 +66,44 @@ Route REAPER output to `DiscordSink` and run `$stream start`.
 
 ## Production Deployment
 
-Use `systemd` on Linux hosts:
+Use the bundled service file at `deploy/reaperbot.service` on Linux hosts.
+
+1. Edit the service file for your host user and paths (if needed):
+
+- `User`
+- `WorkingDirectory`
+- `ExecStart`
+
+2. Install the unit:
+
+```bash
+sudo cp deploy/reaperbot.service /etc/systemd/system/reaperbot.service
+```
+
+3. Reload `systemd` and start on boot:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now reaperbot
+```
+
+4. Verify and monitor:
+
+```bash
+sudo systemctl status reaperbot
+journalctl -u reaperbot -f
+```
+
+Reference service file:
 
 ```ini
 [Unit]
-Description=ReaperBot
+Description=ReaperBot Discord Voice Relay
 After=network-online.target sound.target
+Wants=network-online.target
 
 [Service]
+Type=simple
 User=pi
 WorkingDirectory=/home/pi/Bots/ReaperBot
 Environment=PYTHONUNBUFFERED=1
