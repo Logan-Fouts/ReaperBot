@@ -1,5 +1,6 @@
 import os
 import platform
+import logging
 
 import discord
 from discord.ext import commands
@@ -11,6 +12,10 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 AUDIO_INPUT_DEVICE = os.getenv("AUDIO_INPUT_DEVICE")
 FFMPEG_PATH = os.getenv("FFMPEG_PATH", "ffmpeg")
 AUDIO_BACKEND = os.getenv("AUDIO_BACKEND")
+AUDIO_GAIN = float(os.getenv("AUDIO_GAIN", "2.0"))
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("reaperbot")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +23,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 
 
-def build_ffmpeg_source() -> discord.FFmpegPCMAudio:
+def build_ffmpeg_source() -> discord.AudioSource:
     if not AUDIO_INPUT_DEVICE:
         raise RuntimeError(
             "AUDIO_INPUT_DEVICE is not set in .env. "
@@ -35,12 +40,14 @@ def build_ffmpeg_source() -> discord.FFmpegPCMAudio:
     else:
         source = AUDIO_INPUT_DEVICE
 
-    return discord.FFmpegPCMAudio(
+    pcm_source = discord.FFmpegPCMAudio(
         source=source,
         executable=FFMPEG_PATH,
         before_options=f"-f {backend} -thread_queue_size 4096",
         options="-vn -ac 2 -ar 48000",
     )
+    # Gain boost helps when monitor sources are too quiet.
+    return discord.PCMVolumeTransformer(pcm_source, volume=AUDIO_GAIN)
 
 
 @bot.event
@@ -56,6 +63,34 @@ async def hello(ctx: commands.Context) -> None:
 @bot.command(name="ping")
 async def ping(ctx: commands.Context) -> None:
     await ctx.send("Pong!")
+
+
+@bot.command(name="status")
+async def status(ctx: commands.Context) -> None:
+    voice_client = ctx.voice_client
+    backend = (AUDIO_BACKEND or "").strip().lower()
+    if not backend:
+        backend = "dshow" if platform.system().lower().startswith("win") else "pulse"
+
+    if not voice_client:
+        await ctx.send(
+            f"Not connected. backend={backend}, device={AUDIO_INPUT_DEVICE}, gain={AUDIO_GAIN}"
+        )
+        return
+
+    await ctx.send(
+        " | ".join(
+            [
+                f"channel={voice_client.channel}",
+                f"connected={voice_client.is_connected()}",
+                f"playing={voice_client.is_playing()}",
+                f"paused={voice_client.is_paused()}",
+                f"backend={backend}",
+                f"device={AUDIO_INPUT_DEVICE}",
+                f"gain={AUDIO_GAIN}",
+            ]
+        )
+    )
 
 
 @bot.command(name="join")
@@ -125,7 +160,13 @@ async def stream(ctx: commands.Context, action: str = "start") -> None:
         await ctx.send(str(exc))
         return
 
-    voice_client.play(source)
+    def on_stream_end(error: Exception | None) -> None:
+        if error:
+            logger.error("Audio stream ended with error: %s", error)
+            return
+        logger.info("Audio stream ended.")
+
+    voice_client.play(source, after=on_stream_end)
     await ctx.send("Started streaming audio input to Discord voice.")
 
 
