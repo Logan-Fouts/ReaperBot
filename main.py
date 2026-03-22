@@ -1,6 +1,5 @@
 import logging
 import os
-import platform
 from dataclasses import dataclass
 
 import discord
@@ -34,13 +33,16 @@ def load_config() -> BotConfig:
 
     backend = os.getenv("AUDIO_BACKEND", "").strip().lower()
     if not backend:
-        backend = "dshow" if platform.system().lower().startswith("win") else "pulse"
+        backend = "pulse"
+
+    if backend not in {"pulse", "alsa"}:
+        raise RuntimeError("AUDIO_BACKEND must be 'pulse' or 'alsa' for Linux deployments")
 
     device = os.getenv("AUDIO_INPUT_DEVICE", "").strip()
     if not device:
         raise RuntimeError(
             "AUDIO_INPUT_DEVICE is not set in .env. "
-            "Use a dshow/pulse/alsa source name for your platform."
+            "Use a Pulse source name or ALSA hw/plughw value."
         )
 
     return BotConfig(
@@ -69,10 +71,7 @@ bot = commands.Bot(command_prefix=config.prefix, intents=intents, help_command=N
 
 
 def build_ffmpeg_source() -> discord.AudioSource:
-    if config.audio_backend == "dshow":
-        source = f"audio={config.audio_input_device}"
-    else:
-        source = config.audio_input_device
+    source = config.audio_input_device
 
     pcm_source = discord.FFmpegPCMAudio(
         source=source,

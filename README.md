@@ -7,10 +7,10 @@ It is designed for creators and teams who want to stream audio from REAPER/ReaSt
 ## Features
 
 - Voice channel controls: join, leave, start, stop
-- Configurable audio backend: `pulse`, `alsa`, `dshow`
+- Configurable audio backend: `pulse` or `alsa`
 - Runtime gain control for quick loudness tuning
 - Production-safe environment config via `.env`
-- Works on Raspberry Pi 5 and standard Linux hosts
+- Built for Raspberry Pi 5 and Linux VM hosts
 
 ## Commands
 
@@ -63,15 +63,6 @@ AUDIO_INPUT_DEVICE=discord_sink.monitor
 ```
 
 Route REAPER output to `DiscordSink` and run `$stream start`.
-
-## Windows Notes
-
-Use a capture backend and device like:
-
-```env
-AUDIO_BACKEND=dshow
-AUDIO_INPUT_DEVICE=CABLE Output (VB-Audio Virtual Cable)
-```
 
 ## Production Deployment
 
